@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+/* Explicitly scan these folders for classes */
+@source "../components/**/*.{ts,tsx}";
+@source "../app/**/*.{ts,tsx}";
+
+@theme {
+  --color-background: #fcfcfc;
+  --color-brand-black: #000000;
+  --font-sans: "Inter", ui-sans-serif, system-ui;
+}
+
+@layer base {
+  *, ::after, ::before {
+    box-sizing: border-box;
+  }
+  body {
+    @apply bg-[--color-background] text-[--color-brand-black] antialiased m-0 p-0;
+  }
+}
