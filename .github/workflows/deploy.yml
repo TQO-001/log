@@ -1,4 +1,5 @@
 name: Deploy Log
+
 on:
   push:
     branches: [main]
@@ -13,24 +14,49 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
-      - name: Install & Build
+      - name: Install & Build (Local Runner)
+        # We build here to catch syntax errors before shipping to the VPS
         run: |
           npm install
           npm run build
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
-      - name: Deploy to VPS
+      - name: Deploy to VPS (Rsync)
+        # Using your proven Bounty/Little Garden action
         uses: easingthemes/ssh-deploy@main
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           ARGS: "-rlgoDzvc -i --delete"
-          # For Next.js, we need the build output and necessary files
           SOURCE: "./" 
-          REMOTE_HOST: "log.laughtale.co.za"
+          REMOTE_HOST: "laughtale.co.za"
           REMOTE_USER: "laughtale"
           REMOTE_PORT: "2222"
           TARGET: "/var/www/log"
-          # Exclude node_modules because we'll install production-only on the server
           EXCLUDE: "/node_modules/, /.git/, /.github/"
+
+      - name: Post-Deploy (Server Side)
+        # Automated commands to rebuild and restart on the VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: "laughtale.co.za"
+          username: "laughtale"
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 2222
+          script: |
+            # 1. Load Node/NPM environment
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            
+            # 2. Enter project directory
+            cd /var/www/log
+            
+            # 3. Fresh install and build on the server to fix "next not found"
+            npm install
+            npm run build
+            
+            # 4. Restart the engine on port 3010
+            pm2 restart log-app || pm2 start npm --name "log-app" -- start -- -p 3010
+            pm2 save
