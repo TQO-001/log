@@ -32,8 +32,8 @@ jobs:
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          port: 2222 # Updated port
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 2222
           source: ".next/standalone, .next/static, public, next.config.ts, package.json"
           target: "/var/www/log"
 
@@ -42,8 +42,8 @@ jobs:
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          port: 2222 # Updated port
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 2222 
           script: |
             cd /var/www/log
             npm install --production
