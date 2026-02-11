@@ -1,4 +1,4 @@
-name: Deploy Arrange to VPS
+name: Deploy Log to VPS
 
 on:
   push:
@@ -25,7 +25,7 @@ jobs:
         run: npm run build
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          NEXT_PUBLIC_APP_URL: "https://your-domain.com"
+          NEXT_PUBLIC_APP_URL: "https://log.laughtale.co.za"
 
       - name: Deploy to VPS via SSH
         uses: appleboy/scp-action@v0.1.7
@@ -33,9 +33,9 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
-          # We only sync the necessary production files
+          port: 2222 # Updated port
           source: ".next/standalone, .next/static, public, next.config.ts, package.json"
-          target: "/var/www/arrange"
+          target: "/var/www/log"
 
       - name: Restart Application
         uses: appleboy/ssh-action@v1.0.3
@@ -43,8 +43,10 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
+          port: 2222 # Updated port
           script: |
-            cd /var/www/arrange
+            cd /var/www/log
             npm install --production
-            pm2 delete arrange || true
-            pm2 start server.js --name arrange
+            # Set port to 3010 for the standalone server
+            PORT=3010 pm2 delete log-app || true
+            PORT=3010 pm2 start server.js --name log-app
