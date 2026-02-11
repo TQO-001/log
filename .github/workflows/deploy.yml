@@ -1,37 +1,36 @@
-name: Continuous Deployment
-
+name: Deploy Log
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-  deploy:
-    name: Deploy to Production
+  build-and-deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Execute Remote SSH Commands
-        uses: appleboy/ssh-action@v1.0.3
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_KEY }} # Make sure this matches your secret name
-          port: 2222
-          script: |
-            # 1. Setup NVM (so the script can find 'npm')
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-            
-            # 2. Go to the project folder
-            cd /var/www/log
-            
-            # 3. Pull newest code
-            git pull origin main
-            
-            # 4. Install and Build on the server
-            npm install
-            npm run build
-            
-            # 5. Start/Restart PM2
-            # Using 'npm start' because we aren't using standalone mode here
-            pm2 restart log-app || pm2 start npm --name "log-app" -- start -- -p 3010
+          node-version: '20'
+
+      - name: Install & Build
+        run: |
+          npm install
+          npm run build
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Deploy to VPS
+        uses: easingthemes/ssh-deploy@main
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          ARGS: "-rlgoDzvc -i --delete"
+          # For Next.js, we need the build output and necessary files
+          SOURCE: "./" 
+          REMOTE_HOST: "log.laughtale.co.za"
+          REMOTE_USER: "laughtale"
+          REMOTE_PORT: "2222"
+          TARGET: "/var/www/log"
+          # Exclude node_modules because we'll install production-only on the server
+          EXCLUDE: "/node_modules/, /.git/, /.github/"
